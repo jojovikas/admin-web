@@ -9,14 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { useLogin } from "../hooks/use-login";
-import {
-  loginSchema,
-  type LoginSchema,
-} from "../schemas/login.schema";
+import { loginSchema, type LoginSchema } from "../schemas/login.schema";
 import { PasswordInput } from "./password-input";
+import { ROUTES } from "@/constants/routes";
+import { useRouter } from "next/navigation";
 
 export function LoginForm() {
   const { mutate, isPending, error } = useLogin();
+  const router = useRouter();
 
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
@@ -29,7 +29,8 @@ export function LoginForm() {
   const onSubmit = (data: LoginSchema) => {
     mutate(data, {
       onSuccess: (response) => {
-        console.log("Login Success", response);
+        // console.log("Login Success", response);
+        router.replace(ROUTES.DASHBOARD);
       },
 
       onError: (error) => {
@@ -41,22 +42,15 @@ export function LoginForm() {
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-2xl">
-          Login
-        </CardTitle>
+        <CardTitle className="text-2xl">Login</CardTitle>
       </CardHeader>
 
       <CardContent>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-5"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           {/* Email */}
 
           <div className="space-y-2">
-            <Label htmlFor="email">
-              Email
-            </Label>
+            <Label htmlFor="email">Email</Label>
 
             <Input
               id="email"
@@ -75,9 +69,7 @@ export function LoginForm() {
           {/* Password */}
 
           <div className="space-y-2">
-            <Label htmlFor="password">
-              Password
-            </Label>
+            <Label htmlFor="password">Password</Label>
 
             <PasswordInput
               id="password"
@@ -98,11 +90,7 @@ export function LoginForm() {
             </p>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isPending}
-          >
+          <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? "Logging in..." : "Login"}
           </Button>
         </form>

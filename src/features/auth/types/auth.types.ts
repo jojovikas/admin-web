@@ -1,35 +1,40 @@
-import type { User } from "./user.types";
+  import type { User } from "./user.types";
 
-/* ============================
- * Login
- * ============================ */
+  /* ============================
+  * Login
+  * ============================ */
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+  export interface LoginRequest {
+    email: string;
+    password: string;
+  }
 
-export interface LoginResponse {
-  user: User;
-  accessToken: string;
-}
+  export interface LoginResponse {
+    user: User;
+    accessToken: string;
+  }
 
-/* ============================
- * Register
- * ============================ */
+  /* ============================
+  * Register
+  * ============================ */
 
-export interface RegisterRequest {
-  name: string;
-  email: string;
-  password: string;
-}
+  export interface RegisterRequest {
+    name: string;
+    email: string;
+    password: string;
+  }
 
-export type RegisterResponse = User;
+  export type RegisterResponse = User;
 
-/* ============================
- * Refresh Token
- * ============================ */
+  /* ============================
+  * Refresh Token
+  * ============================ */
 
-export interface RefreshTokenResponse {
-  accessToken: string;
-}
+  export interface RefreshTokenResponse {
+    accessToken: string;
+  }
+
+
+
+
+

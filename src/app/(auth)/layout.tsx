@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { ReactNode } from "react";
+import { GuestGuard } from "@/components/auth/guest-guard";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -7,5 +8,9 @@ interface AuthLayoutProps {
 export default function AuthLayout({
   children,
 }: AuthLayoutProps) {
-  return <>{children}</>;
+  return (
+    <GuestGuard>
+      {children}
+    </GuestGuard>
+  );
 }

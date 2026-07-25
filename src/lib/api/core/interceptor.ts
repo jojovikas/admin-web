@@ -1,30 +1,23 @@
-import type {
-  AxiosError,
-  AxiosRequestConfig,
-  InternalAxiosRequestConfig,
-} from "axios";
+import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 import { axiosInstance } from "./axios";
-import { API_ENDPOINTS } from "../endpoints";
-import { useAuthStore } from "@/features/auth/store/auth.store";
-
-
+import { authSession } from "@/lib/auth/auth-session";
+import { authService } from "@/features/auth/services/auth.service";
+import { logout } from "@/features/auth/utils/logout";
 
 interface RetryAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
 let isRefreshing = false;
+let interceptorsInitialized = false;
 
 let failedQueue: {
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
 }[] = [];
 
-const processQueue = (
-  error: unknown,
-  token: string | null = null
-) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);
@@ -38,22 +31,31 @@ const processQueue = (
 
 export const setupInterceptors = () => {
   /**
-   * REQUEST
+   * Prevent duplicate interceptor registration
+   */
+  if (interceptorsInitialized) {
+    return;
+  }
+
+  interceptorsInitialized = true;
+
+  /**
+   * REQUEST INTERCEPTOR
    */
   axiosInstance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-      const token = useAuthStore.getState().accessToken;
+      const token = authSession.getAccessToken();
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
 
       return config;
-    }
+    },
   );
 
   /**
-   * RESPONSE
+   * RESPONSE INTERCEPTOR
    */
   axiosInstance.interceptors.response.use(
     (response) => response,
@@ -65,23 +67,36 @@ export const setupInterceptors = () => {
         return Promise.reject(error);
       }
 
-      if (
-        error.response?.status !== 401 ||
-        originalRequest._retry
-      ) {
+      /**
+       * Don't try to refresh the refresh endpoint itself
+       */
+      const requestUrl = originalRequest.url ?? "";
+
+      if (requestUrl.includes("/auth/refresh-token")) {
+    logout();
+
+        return Promise.reject(error);
+      }
+
+      /**
+       * Ignore non-401 or already retried requests
+       */
+      if (error.response?.status !== 401 || originalRequest._retry) {
         return Promise.reject(error);
       }
 
       originalRequest._retry = true;
 
       /**
-       * Already refreshing?
+       * If refresh is already in progress,
+       * queue this request.
        */
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token) => {
               originalRequest.headers.Authorization = `Bearer ${token}`;
+
               resolve(axiosInstance(originalRequest));
             },
             reject,
@@ -92,31 +107,37 @@ export const setupInterceptors = () => {
       isRefreshing = true;
 
       try {
-        const response = await axiosInstance.post(
-          API_ENDPOINTS.AUTH.REFRESH
-        );
+        /**
+         * Refresh access token
+         */
+        const accessToken = await authService.refreshToken();
 
-        const accessToken =
-          (response.data as any).data.accessToken;
-
-        useAuthStore
-          .getState()
-          .setAccessToken(accessToken);
-
+        /**
+         * Retry queued requests
+         */
         processQueue(null, accessToken);
 
+        /**
+         * Retry original request
+         */
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
         return axiosInstance(originalRequest);
       } catch (refreshError) {
+        /**
+         * Reject queued requests
+         */
         processQueue(refreshError);
 
-        useAuthStore.getState().clear();
+        /**
+         * Clear auth session
+         */
+        logout();
 
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
-    }
+    },
   );
 };
