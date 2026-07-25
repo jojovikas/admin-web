@@ -1,5 +1,6 @@
 
-import { appConfig } from "@/src/config/app";
+
+import { appConfig } from "@/config/app";
 import axios from "axios";
 
 
